@@ -12,10 +12,9 @@ terraform {
   }
 
   # Backend configuration for Prod state storage
-  # Run scripts/bootstrap.ps1 first, then update these values
   backend "azurerm" {
     resource_group_name  = "demo-bootstrap-rg"
-    storage_account_name = "yourstatestorageacct"  # Update after bootstrap
+    storage_account_name = "demotfstate4518"
     container_name       = "tfstate"
     key                  = "echo-server-prod.tfstate"
   }
@@ -23,6 +22,7 @@ terraform {
 
 provider "azurerm" {
   features {}
+  skip_provider_registration = true
 }
 
 # Create ACR in prod (shared with QA)
@@ -128,21 +128,21 @@ resource "azurerm_storage_account" "artifacts" {
 # Container for test reports
 resource "azurerm_storage_container" "test_reports" {
   name                  = "test-reports"
-  storage_account_id    = azurerm_storage_account.artifacts.id
+  storage_account_name  = azurerm_storage_account.artifacts.name
   container_access_type = "private"
 }
 
 # Container for build logs
 resource "azurerm_storage_container" "build_logs" {
   name                  = "build-logs"
-  storage_account_id    = azurerm_storage_account.artifacts.id
+  storage_account_name  = azurerm_storage_account.artifacts.name
   container_access_type = "private"
 }
 
 # Container for release artifacts
 resource "azurerm_storage_container" "releases" {
   name                  = "releases"
-  storage_account_id    = azurerm_storage_account.artifacts.id
+  storage_account_name  = azurerm_storage_account.artifacts.name
   container_access_type = "private"
 }
 

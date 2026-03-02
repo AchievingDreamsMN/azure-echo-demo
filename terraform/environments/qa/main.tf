@@ -12,10 +12,9 @@ terraform {
   }
 
   # Backend configuration for QA state storage
-  # Run scripts/bootstrap.ps1 first, then update these values
   backend "azurerm" {
     resource_group_name  = "demo-bootstrap-rg"
-    storage_account_name = "yourstatestorageacct"  # Update after bootstrap
+    storage_account_name = "demotfstate4518"
     container_name       = "tfstate"
     key                  = "echo-server-qa.tfstate"
   }
@@ -23,6 +22,7 @@ terraform {
 
 provider "azurerm" {
   features {}
+  skip_provider_registration = true
 }
 
 module "container_app" {
