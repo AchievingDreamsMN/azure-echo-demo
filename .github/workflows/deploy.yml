@@ -246,12 +246,12 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
 
-  # Job 3: Deploy to QA (on develop branch)
+  # Job 3: Deploy to QA (on develop branch or manual trigger)
   deploy-qa:
     name: Deploy to QA
     runs-on: ubuntu-latest
     needs: build
-    if: github.ref == 'refs/heads/develop' && github.event_name == 'push'
+    if: (github.ref == 'refs/heads/develop' && github.event_name == 'push') || (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'qa')
     environment: qa
     
     defaults:
