@@ -77,17 +77,20 @@ Write-Host @"
   }
 "@
 
-Write-Host "`n--- GitHub Secrets ---" -ForegroundColor Cyan
+Write-Host "`n--- GitHub Secrets (MINIMAL - only auth) ---" -ForegroundColor Cyan
 Write-Host "Add these secrets to your GitHub repository:" -ForegroundColor Yellow
 Write-Host "(Settings -> Secrets and variables -> Actions -> New repository secret)`n"
+Write-Host "NOTE: ACR credentials are stored in Azure Key Vault, not GitHub!" -ForegroundColor Green
 
-Write-Host "AZURE_CREDENTIALS:" -ForegroundColor White
+Write-Host "`nAZURE_CREDENTIALS (JSON):" -ForegroundColor White
 $sp | ConvertTo-Json | Write-Host
 
 Write-Host "`nARM_CLIENT_ID: $($sp.clientId)" -ForegroundColor White
 Write-Host "ARM_CLIENT_SECRET: $($sp.clientSecret)" -ForegroundColor White
 Write-Host "ARM_SUBSCRIPTION_ID: $($sp.subscriptionId)" -ForegroundColor White
 Write-Host "ARM_TENANT_ID: $($sp.tenantId)" -ForegroundColor White
+Write-Host "`nTotal GitHub Secrets needed: 5 (auth only)" -ForegroundColor Green
+Write-Host "All other secrets (ACR, app secrets) stored in: Azure Key Vault" -ForegroundColor Green
 
 Write-Host "`n--- Cleanup After Demo ---" -ForegroundColor Cyan
 Write-Host "To delete EVERYTHING after the demo, run:" -ForegroundColor Yellow

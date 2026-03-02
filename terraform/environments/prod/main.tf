@@ -49,7 +49,57 @@ resource "azurerm_container_registry" "main" {
     Environment = "Shared"
     Project     = var.project_name
     ManagedBy   = "Terraform"
+    Demo        = "true"
   }
+}
+
+# Key Vault for secrets (shared across environments)
+data "azurerm_client_config" "current" {}
+
+resource "azurerm_key_vault" "main" {
+  name                       = "demo-${var.project_name}-kv"
+  location                   = azurerm_resource_group.acr.location
+  resource_group_name        = azurerm_resource_group.acr.name
+  tenant_id                  = data.azurerm_client_config.current.tenant_id
+  sku_name                   = "standard"
+  soft_delete_retention_days = 7
+  purge_protection_enabled   = false  # Allow immediate delete for demo
+
+  # Access policy for the service principal running Terraform/GitHub Actions
+  access_policy {
+    tenant_id = data.azurerm_client_config.current.tenant_id
+    object_id = data.azurerm_client_config.current.object_id
+
+    secret_permissions = [
+      "Get", "List", "Set", "Delete", "Purge"
+    ]
+  }
+
+  tags = {
+    Environment = "Shared"
+    Project     = var.project_name
+    ManagedBy   = "Terraform"
+    Demo        = "true"
+  }
+}
+
+# Store ACR credentials in Key Vault
+resource "azurerm_key_vault_secret" "acr_server" {
+  name         = "acr-login-server"
+  value        = azurerm_container_registry.main.login_server
+  key_vault_id = azurerm_key_vault.main.id
+}
+
+resource "azurerm_key_vault_secret" "acr_username" {
+  name         = "acr-username"
+  value        = azurerm_container_registry.main.admin_username
+  key_vault_id = azurerm_key_vault.main.id
+}
+
+resource "azurerm_key_vault_secret" "acr_password" {
+  name         = "acr-password"
+  value        = azurerm_container_registry.main.admin_password
+  key_vault_id = azurerm_key_vault.main.id
 }
 
 module "container_app" {

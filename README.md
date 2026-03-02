@@ -62,58 +62,77 @@ docker run -p 8080:8080 echo-server
 
 ## ☁️ Azure Deployment
 
-### 1. Create Azure Service Principal
+### Architecture
 
-```bash
-az login
-az ad sp create-for-rbac --name "echo-server-cicd" \
-  --role contributor \
-  --scopes /subscriptions/{subscription-id} \
-  --sdk-auth
+```
+GitHub Secrets (minimal)     Azure Key Vault
+├── AZURE_CREDENTIALS   →    ├── acr-login-server
+├── ARM_CLIENT_ID            ├── acr-username
+├── ARM_CLIENT_SECRET        └── acr-password
+├── ARM_SUBSCRIPTION_ID
+└── ARM_TENANT_ID
+```
+
+### 1. Bootstrap (One-Time Setup)
+
+```powershell
+# Run the bootstrap script
+.\scripts\bootstrap.ps1
+
+# This creates:
+# - demo-bootstrap-rg (resource group for Terraform state)
+# - Storage account for state files
+# - Service principal for GitHub Actions
 ```
 
 ### 2. Configure GitHub Secrets
 
-Add these secrets to your GitHub repository:
+Add these **5 secrets** to your GitHub repository (Settings → Secrets → Actions):
 
 | Secret | Description |
 |--------|-------------|
-| `AZURE_CREDENTIALS` | Full JSON output from service principal creation |
+| `AZURE_CREDENTIALS` | Full JSON from bootstrap output |
 | `ARM_CLIENT_ID` | Service principal client ID |
 | `ARM_CLIENT_SECRET` | Service principal secret |
 | `ARM_SUBSCRIPTION_ID` | Azure subscription ID |
 | `ARM_TENANT_ID` | Azure tenant ID |
-| `ACR_USERNAME` | Container registry admin username |
-| `ACR_PASSWORD` | Container registry admin password |
-| `ACR_LOGIN_SERVER` | Container registry login server |
 
-### 3. Initial Infrastructure Setup
+**Note:** ACR credentials are stored in Azure Key Vault, not GitHub!
+
+### 3. Initial Infrastructure (Creates Key Vault + ACR)
 
 ```bash
-cd terraform
+cd terraform/environments/prod
 
-# Initialize Terraform
+# Update backend storage account name from bootstrap output
+# Then:
 terraform init
-
-# Create infrastructure
 terraform apply
 ```
 
-### 4. Push to GitHub
+This creates:
+- Azure Container Registry
+- Azure Key Vault with ACR credentials
+- Production Container App
+
+### 4. Deploy QA Environment
+
+Push to `develop` branch triggers QA deployment:
 
 ```bash
-git init
-git add .
-git commit -m "Initial commit"
-git remote add origin https://github.com/YOUR_USERNAME/azure-echo-demo.git
-git push -u origin main
+git checkout develop
+git push origin develop
 ```
 
-The CI/CD pipeline will automatically:
-1. Run tests and linting
-2. Build and push Docker image
-3. Deploy infrastructure with Terraform
-4. Update the Container App
+### 5. Deploy to Production
+
+Push to `main` branch triggers production deployment (with approval gate):
+
+```bash
+git checkout main
+git merge develop
+git push origin main
+```
 
 ## 🔧 Configuration
 
@@ -156,6 +175,32 @@ curl -X POST https://your-app.azurecontainerapps.io/echo \
 
 - Container Apps uses consumption-based pricing
 - `min_replicas: 0` scales to zero when idle
+
+## 🧹 Cleanup After Demo
+
+Delete all demo resources with one command:
+
+```powershell
+.\scripts\cleanup.ps1
+```
+
+This removes:
+- All `demo-*` resource groups
+- Service principal
+- App registration
+
+Or manually:
+```bash
+# Terraform destroy (preserves state for re-deploy)
+cd terraform/environments/prod && terraform destroy
+cd ../qa && terraform destroy
+
+# Full cleanup (deletes everything)
+az group delete --name demo-bootstrap-rg --yes
+az group delete --name demo-echo-server-qa-rg --yes
+az group delete --name demo-echo-server-prod-rg --yes
+az group delete --name demo-echo-server-acr-rg --yes
+```
 - Basic tier ACR for development
 - 30-day log retention
 

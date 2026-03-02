@@ -24,3 +24,13 @@ output "container_registry_name" {
   description = "ACR name"
   value       = azurerm_container_registry.main.name
 }
+
+output "key_vault_name" {
+  description = "Key Vault name for secrets"
+  value       = azurerm_key_vault.main.name
+}
+
+output "key_vault_uri" {
+  description = "Key Vault URI"
+  value       = azurerm_key_vault.main.vault_uri
+}
