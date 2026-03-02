@@ -48,3 +48,45 @@ def test_health_endpoint(client):
     assert response.status_code == 200
     data = response.json()
     assert data["status"] == "healthy"
+
+
+def test_sql_injection_blocked(client):
+    """Test that SQL injection attempts are blocked."""
+    # DROP TABLE attack
+    response = client.post("/echo", json={"message": "Hello DROP TABLE bogus; --"})
+    assert response.status_code == 400
+    assert "SQL injection" in response.json()["detail"]
+
+
+def test_sql_injection_select_blocked(client):
+    """Test SELECT injection is blocked."""
+    response = client.post("/echo", json={"message": "'; SELECT * FROM users; --"})
+    assert response.status_code == 400
+
+
+def test_sql_injection_union_blocked(client):
+    """Test UNION injection is blocked."""
+    response = client.post("/echo", json={"message": "1 UNION SELECT password FROM users"})
+    assert response.status_code == 400
+
+
+def test_sql_injection_or_1_equals_1(client):
+    """Test OR 1=1 injection is blocked."""
+    response = client.post("/echo", json={"message": "admin' OR 1=1 --"})
+    assert response.status_code == 400
+
+
+def test_normal_message_allowed(client):
+    """Test that normal messages still work."""
+    response = client.post("/echo", json={"message": "Hello, this is a normal message!"})
+    assert response.status_code == 200
+
+
+def test_xss_sanitized(client):
+    """Test that XSS attempts are sanitized."""
+    response = client.post("/echo", json={"message": "<script>alert('xss')</script>"})
+    assert response.status_code == 200
+    data = response.json()
+    # HTML should be escaped
+    assert "<script>" not in data["original"]
+    assert "&lt;script&gt;" in data["original"]

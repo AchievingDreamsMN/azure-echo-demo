@@ -3,14 +3,43 @@ Simple Echo Web Server
 Demonstrates a basic Python web application for Azure Container Apps deployment.
 """
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import HTMLResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 import uvicorn
 import os
+import re
+import html
 
 ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
 PORT = int(os.getenv("PORT", "8080"))
+
+# SQL injection patterns to detect and block
+SQL_INJECTION_PATTERNS = [
+    r"(\b(SELECT|INSERT|UPDATE|DELETE|DROP|UNION|ALTER|CREATE|TRUNCATE)\b)",
+    r"(--|#|/\*|\*/)",  # SQL comments
+    r"(\bOR\b\s+\d+\s*=\s*\d+)",  # OR 1=1 patterns
+    r"(\bAND\b\s+\d+\s*=\s*\d+)",  # AND 1=1 patterns
+    r"(;\s*(SELECT|INSERT|UPDATE|DELETE|DROP))",  # Chained queries
+    r"(\bEXEC\b|\bEXECUTE\b)",  # Execute commands
+    r"(CHAR\s*\(|CONCAT\s*\()",  # String manipulation functions
+    r"(\bWAITFOR\b|\bBENCHMARK\b)",  # Time-based injection
+]
+
+
+def detect_sql_injection(text: str) -> bool:
+    """Check if text contains SQL injection patterns."""
+    for pattern in SQL_INJECTION_PATTERNS:
+        if re.search(pattern, text, re.IGNORECASE):
+            return True
+    return False
+
+
+def sanitize_input(text: str) -> str:
+    """Sanitize input to prevent injection attacks."""
+    # HTML encode to prevent XSS
+    sanitized = html.escape(text)
+    return sanitized
 
 app = FastAPI(
     title="Echo Server",
@@ -143,10 +172,20 @@ async def home():
 
 @app.post("/echo", response_model=EchoResponse)
 async def echo(request: EchoRequest):
-    """Echo back the message sent by the user."""
+    """Echo back the message sent by the user with security validation."""
+    # Check for SQL injection patterns
+    if detect_sql_injection(request.message):
+        raise HTTPException(
+            status_code=400,
+            detail="Potential SQL injection detected. Request blocked."
+        )
+    
+    # Sanitize input
+    sanitized_message = sanitize_input(request.message)
+    
     return EchoResponse(
-        echo=f"🔊 {request.message}",
-        original=request.message
+        echo=f"🔊 {sanitized_message}",
+        original=sanitized_message
     )
 
 
