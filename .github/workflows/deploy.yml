@@ -318,6 +318,11 @@ jobs:
           APP_URL=$(terraform output -raw container_app_url)
           echo "## 🧪 QA Deployment Successful!" >> $GITHUB_STEP_SUMMARY
           echo "Application URL: $APP_URL" >> $GITHUB_STEP_SUMMARY
+        env:
+          ARM_CLIENT_ID: ${{ secrets.ARM_CLIENT_ID }}
+          ARM_CLIENT_SECRET: ${{ secrets.ARM_CLIENT_SECRET }}
+          ARM_SUBSCRIPTION_ID: ${{ secrets.ARM_SUBSCRIPTION_ID }}
+          ARM_TENANT_ID: ${{ secrets.ARM_TENANT_ID }}
 
   # Job 4: Deploy to Production (manual trigger only)
   deploy-prod:
@@ -377,3 +382,8 @@ jobs:
           APP_URL=$(terraform output -raw container_app_url)
           echo "## 🚀 Production Deployment Successful!" >> $GITHUB_STEP_SUMMARY
           echo "Application URL: $APP_URL" >> $GITHUB_STEP_SUMMARY
+        env:
+          ARM_CLIENT_ID: ${{ secrets.ARM_CLIENT_ID }}
+          ARM_CLIENT_SECRET: ${{ secrets.ARM_CLIENT_SECRET }}
+          ARM_SUBSCRIPTION_ID: ${{ secrets.ARM_SUBSCRIPTION_ID }}
+          ARM_TENANT_ID: ${{ secrets.ARM_TENANT_ID }}
