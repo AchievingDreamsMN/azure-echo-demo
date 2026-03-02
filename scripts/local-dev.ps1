@@ -81,19 +81,24 @@ if ($Ngrok) {
     try {
         $ngrokApi = Invoke-RestMethod "http://localhost:4040/api/tunnels" -ErrorAction SilentlyContinue
         $publicUrl = $ngrokApi.tunnels | Where-Object { $_.proto -eq "https" } | Select-Object -First 1 -ExpandProperty public_url
-        Write-Host "`n📡 Public URL: $publicUrl" -ForegroundColor Green
+        Write-Host ""
+        Write-Host "Public URL: $publicUrl" -ForegroundColor Green
         Write-Host "   (Share this URL to test from anywhere)" -ForegroundColor Gray
-    } catch {
+    }
+    catch {
         Write-Host "ngrok started - check http://localhost:4040 for public URL" -ForegroundColor Yellow
     }
 }
 
 # Run the application
-Write-Host "`n🚀 Starting Echo Server..." -ForegroundColor Green
+Write-Host ""
+Write-Host "Starting Echo Server..." -ForegroundColor Green
 Write-Host "   Local:  http://localhost:$Port" -ForegroundColor White
 Write-Host "   Health: http://localhost:$Port/health" -ForegroundColor White
 Write-Host "   API:    http://localhost:$Port/echo" -ForegroundColor White
-Write-Host "`nPress Ctrl+C to stop`n" -ForegroundColor Gray
+Write-Host ""
+Write-Host "Press Ctrl+C to stop" -ForegroundColor Gray
+Write-Host ""
 
 Push-Location "$ProjectRoot\app"
 python main.py

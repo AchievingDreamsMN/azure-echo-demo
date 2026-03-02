@@ -2,14 +2,21 @@
 Tests for the Echo Server API
 """
 
+import sys
+import os
+
+# Add app directory to path for imports
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'app'))
+
 import pytest
-from fastapi.testclient import TestClient
-from main import app
 
 
 @pytest.fixture
 def client():
     """Create test client."""
+    # Import here to avoid issues with module loading
+    from fastapi.testclient import TestClient
+    from main import app
     return TestClient(app)
 
 

@@ -79,14 +79,21 @@ Test-Endpoint -Name "POST /echo (unicode)" -Method POST -Path "/echo" `
 Test-Endpoint -Name "GET / (homepage)" -Method GET -Path "/" -ExpectedContains ""
 
 # Summary
-Write-Host "`n=== Results ===" -ForegroundColor Cyan
+Write-Host ""
+Write-Host "=== Results ===" -ForegroundColor Cyan
 Write-Host "  Passed: $passed" -ForegroundColor Green
-Write-Host "  Failed: $failed" -ForegroundColor $(if ($failed -gt 0) { "Red" } else { "Gray" })
+if ($failed -gt 0) {
+    Write-Host "  Failed: $failed" -ForegroundColor Red
+} else {
+    Write-Host "  Failed: $failed" -ForegroundColor Gray
+}
 
 if ($failed -gt 0) {
-    Write-Host "`nSome tests failed. Run with -Verbose for details." -ForegroundColor Yellow
+    Write-Host ""
+    Write-Host "Some tests failed. Run with -Verbose for details." -ForegroundColor Yellow
     exit 1
 } else {
-    Write-Host "`nAll tests passed! ✓" -ForegroundColor Green
+    Write-Host ""
+    Write-Host "All tests passed!" -ForegroundColor Green
     exit 0
 }
