@@ -41,3 +41,14 @@ bootstrap-output.txt
 
 # Logs
 *.log
+
+# Coverage
+.coverage
+coverage-report/
+coverage.xml
+htmlcov/
+
+# Test outputs
+test-results.xml
+lint-results.json
+.pytest_cache/
