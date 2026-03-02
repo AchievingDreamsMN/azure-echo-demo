@@ -66,6 +66,8 @@ class EchoResponse(BaseModel):
 @app.get("/", response_class=HTMLResponse)
 async def home():
     """Serve a simple HTML page with an input form."""
+    short_sha = BUILD_SHA[:7] if len(BUILD_SHA) > 7 else BUILD_SHA
+    version_info = f"<strong>Version:</strong> {VERSION} | <strong>Build:</strong> {short_sha} | <strong>Env:</strong> {ENVIRONMENT}"
     return """
     <!DOCTYPE html>
     <html>
@@ -158,9 +160,7 @@ async def home():
             </div>
             
             <div class="version">
-                <strong>Version:</strong> {VERSION} | 
-                <strong>Build:</strong> {BUILD_SHA[:7] if len(BUILD_SHA) > 7 else BUILD_SHA} | 
-                <strong>Env:</strong> {ENVIRONMENT}
+                """ + version_info + """
             </div>
         </div>
         
