@@ -37,6 +37,7 @@ Thumbs.db
 .env
 *.pem
 *.key
+bootstrap-output.txt
 
 # Logs
 *.log

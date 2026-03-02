@@ -12,9 +12,10 @@ terraform {
   }
 
   # Backend configuration for Prod state storage
+  # Run scripts/bootstrap.ps1 first, then update these values
   backend "azurerm" {
-    resource_group_name  = "tfstate-rg"
-    storage_account_name = "yourstatestorageacct"  # Update this
+    resource_group_name  = "demo-bootstrap-rg"
+    storage_account_name = "yourstatestorageacct"  # Update after bootstrap
     container_name       = "tfstate"
     key                  = "echo-server-prod.tfstate"
   }
@@ -26,13 +27,14 @@ provider "azurerm" {
 
 # Create ACR in prod (shared with QA)
 resource "azurerm_resource_group" "acr" {
-  name     = "${var.project_name}-acr-rg"
+  name     = "demo-${var.project_name}-acr-rg"
   location = var.location
 
   tags = {
     Environment = "Shared"
     Project     = var.project_name
     ManagedBy   = "Terraform"
+    Demo        = "true"
   }
 }
 
@@ -56,7 +58,7 @@ module "container_app" {
   project_name        = var.project_name
   environment         = "prod"
   location            = var.location
-  resource_group_name = "${var.project_name}-prod-rg"
+  resource_group_name = "demo-${var.project_name}-prod-rg"
 
   image_name = var.image_name
   image_tag  = var.image_tag
@@ -79,5 +81,6 @@ module "container_app" {
     Environment = "Production"
     Project     = var.project_name
     ManagedBy   = "Terraform"
+    Demo        = "true"
   }
 }

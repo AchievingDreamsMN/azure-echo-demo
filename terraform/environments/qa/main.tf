@@ -12,9 +12,10 @@ terraform {
   }
 
   # Backend configuration for QA state storage
+  # Run scripts/bootstrap.ps1 first, then update these values
   backend "azurerm" {
-    resource_group_name  = "tfstate-rg"
-    storage_account_name = "yourstatestorageacct"  # Update this
+    resource_group_name  = "demo-bootstrap-rg"
+    storage_account_name = "yourstatestorageacct"  # Update after bootstrap
     container_name       = "tfstate"
     key                  = "echo-server-qa.tfstate"
   }
@@ -30,7 +31,7 @@ module "container_app" {
   project_name        = var.project_name
   environment         = "qa"
   location            = var.location
-  resource_group_name = "${var.project_name}-qa-rg"
+  resource_group_name = "demo-${var.project_name}-qa-rg"
 
   image_name = var.image_name
   image_tag  = var.image_tag
@@ -53,5 +54,6 @@ module "container_app" {
     Environment = "QA"
     Project     = var.project_name
     ManagedBy   = "Terraform"
+    Demo        = "true"
   }
 }
