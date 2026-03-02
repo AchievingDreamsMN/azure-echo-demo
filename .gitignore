@@ -27,6 +27,7 @@ env/
 *.tfstate.*
 *.tfplan
 .terraform.lock.hcl
+*.tfvars.local
 
 # OS
 .DS_Store

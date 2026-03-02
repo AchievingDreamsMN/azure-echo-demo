@@ -1,0 +1,57 @@
+# QA Environment Configuration
+# Deploys Echo Server to Azure Container Apps for QA testing
+
+terraform {
+  required_version = ">= 1.5.0"
+
+  required_providers {
+    azurerm = {
+      source  = "hashicorp/azurerm"
+      version = "~> 3.85.0"
+    }
+  }
+
+  # Backend configuration for QA state storage
+  backend "azurerm" {
+    resource_group_name  = "tfstate-rg"
+    storage_account_name = "yourstatestorageacct"  # Update this
+    container_name       = "tfstate"
+    key                  = "echo-server-qa.tfstate"
+  }
+}
+
+provider "azurerm" {
+  features {}
+}
+
+module "container_app" {
+  source = "../../modules/container-app"
+
+  project_name        = var.project_name
+  environment         = "qa"
+  location            = var.location
+  resource_group_name = "${var.project_name}-qa-rg"
+
+  image_name = var.image_name
+  image_tag  = var.image_tag
+
+  # QA-specific scaling (lower for cost savings)
+  min_replicas = 0
+  max_replicas = 2
+  cpu          = 0.25
+  memory       = "0.5Gi"
+
+  # Shorter log retention for QA
+  log_retention_days = 14
+
+  # ACR credentials (shared from prod or provided)
+  container_registry_server   = var.container_registry_server
+  container_registry_username = var.container_registry_username
+  container_registry_password = var.container_registry_password
+
+  tags = {
+    Environment = "QA"
+    Project     = var.project_name
+    ManagedBy   = "Terraform"
+  }
+}
