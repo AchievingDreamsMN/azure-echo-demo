@@ -180,12 +180,12 @@ async def echo(request: EchoRequest):
             detail="Potential SQL injection detected. Request blocked."
         )
     
-    # Sanitize input
+    # Sanitize input for display (XSS protection)
     sanitized_message = sanitize_input(request.message)
     
     return EchoResponse(
-        echo=f"🔊 {sanitized_message}",
-        original=sanitized_message
+        echo=f"🔊 {sanitized_message}",  # Sanitized for safe display
+        original=request.message  # Keep actual original input
     )
 
 

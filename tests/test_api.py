@@ -87,6 +87,8 @@ def test_xss_sanitized(client):
     response = client.post("/echo", json={"message": "<script>alert('xss')</script>"})
     assert response.status_code == 200
     data = response.json()
-    # HTML should be escaped
-    assert "<script>" not in data["original"]
-    assert "&lt;script&gt;" in data["original"]
+    # Original should contain the raw input (unchanged)
+    assert "<script>" in data["original"]
+    # Echo should be sanitized (HTML escaped)
+    assert "<script>" not in data["echo"]
+    assert "&lt;script&gt;" in data["echo"]
