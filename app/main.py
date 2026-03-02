@@ -7,6 +7,10 @@ from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 import uvicorn
+import os
+
+ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
+PORT = int(os.getenv("PORT", "8080"))
 
 app = FastAPI(
     title="Echo Server",
@@ -149,8 +153,9 @@ async def echo(request: EchoRequest):
 @app.get("/health")
 async def health():
     """Health check endpoint for container orchestration."""
-    return {"status": "healthy", "service": "echo-server"}
+    return {"status": "healthy", "service": "echo-server", "environment": ENVIRONMENT}
 
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8080)
+    print(f"Starting Echo Server on port {PORT} (environment: {ENVIRONMENT})")
+    uvicorn.run(app, host="0.0.0.0", port=PORT)
