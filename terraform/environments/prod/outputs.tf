@@ -34,3 +34,13 @@ output "key_vault_uri" {
   description = "Key Vault URI"
   value       = azurerm_key_vault.main.vault_uri
 }
+
+output "artifacts_storage_account_name" {
+  description = "Storage account name for build artifacts"
+  value       = azurerm_storage_account.artifacts.name
+}
+
+output "artifacts_storage_url" {
+  description = "Storage account blob endpoint"
+  value       = azurerm_storage_account.artifacts.primary_blob_endpoint
+}

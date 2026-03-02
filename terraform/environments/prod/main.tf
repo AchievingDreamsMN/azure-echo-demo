@@ -102,6 +102,63 @@ resource "azurerm_key_vault_secret" "acr_password" {
   key_vault_id = azurerm_key_vault.main.id
 }
 
+# Storage Account for build artifacts
+resource "azurerm_storage_account" "artifacts" {
+  name                     = replace("demo${var.project_name}art", "-", "")
+  resource_group_name      = azurerm_resource_group.acr.name
+  location                 = azurerm_resource_group.acr.location
+  account_tier             = "Standard"
+  account_replication_type = "LRS"
+  min_tls_version          = "TLS1_2"
+
+  blob_properties {
+    delete_retention_policy {
+      days = 7  # Keep deleted blobs for 7 days (demo-friendly)
+    }
+  }
+
+  tags = {
+    Environment = "Shared"
+    Project     = var.project_name
+    ManagedBy   = "Terraform"
+    Demo        = "true"
+  }
+}
+
+# Container for test reports
+resource "azurerm_storage_container" "test_reports" {
+  name                  = "test-reports"
+  storage_account_id    = azurerm_storage_account.artifacts.id
+  container_access_type = "private"
+}
+
+# Container for build logs
+resource "azurerm_storage_container" "build_logs" {
+  name                  = "build-logs"
+  storage_account_id    = azurerm_storage_account.artifacts.id
+  container_access_type = "private"
+}
+
+# Container for release artifacts
+resource "azurerm_storage_container" "releases" {
+  name                  = "releases"
+  storage_account_id    = azurerm_storage_account.artifacts.id
+  container_access_type = "private"
+}
+
+# Store artifact storage connection string in Key Vault
+resource "azurerm_key_vault_secret" "artifacts_connection_string" {
+  name         = "artifacts-storage-connection-string"
+  value        = azurerm_storage_account.artifacts.primary_connection_string
+  key_vault_id = azurerm_key_vault.main.id
+}
+
+resource "azurerm_key_vault_secret" "artifacts_account_name" {
+  name         = "artifacts-storage-account-name"
+  value        = azurerm_storage_account.artifacts.name
+  key_vault_id = azurerm_key_vault.main.id
+}
+
 module "container_app" {
   source = "../../modules/container-app"
 

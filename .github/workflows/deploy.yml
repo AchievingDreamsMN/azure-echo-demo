@@ -23,6 +23,7 @@ env:
   IMAGE_NAME: echo-server
   TERRAFORM_VERSION: 1.6.6
   KEY_VAULT_NAME: demo-echo-server-kv
+  ARTIFACTS_CONTAINER: test-reports
 
 jobs:
   # Job 1: Run tests and lint
@@ -47,10 +48,65 @@ jobs:
           pip install -r tests/requirements-test.txt
 
       - name: Lint with Ruff
-        run: ruff check app/
+        run: ruff check app/ --output-format=json > lint-results.json || true
+        continue-on-error: true
 
-      - name: Run tests
-        run: pytest tests/ -v --tb=short
+      - name: Run tests with coverage
+        run: |
+          pytest tests/ -v --tb=short \
+            --junitxml=test-results.xml \
+            --cov=app \
+            --cov-report=html:coverage-report \
+            --cov-report=xml:coverage.xml
+
+      - name: Upload test artifacts to GitHub
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-reports-${{ github.sha }}
+          path: |
+            test-results.xml
+            coverage.xml
+            coverage-report/
+            lint-results.json
+          retention-days: 30
+
+      - name: Log in to Azure
+        if: github.event_name == 'push'
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Upload artifacts to Azure Blob Storage
+        if: github.event_name == 'push'
+        run: |
+          STORAGE_ACCOUNT=$(az keyvault secret show --vault-name ${{ env.KEY_VAULT_NAME }} --name artifacts-storage-account-name --query value -o tsv 2>/dev/null || echo "")
+          if [ -n "$STORAGE_ACCOUNT" ]; then
+            TIMESTAMP=$(date +%Y%m%d-%H%M%S)
+            BLOB_PATH="${{ github.ref_name }}/$TIMESTAMP-${{ github.sha }}"
+            
+            # Upload test results
+            az storage blob upload-batch \
+              --account-name $STORAGE_ACCOUNT \
+              --destination ${{ env.ARTIFACTS_CONTAINER }} \
+              --source . \
+              --pattern "*.xml" \
+              --destination-path "$BLOB_PATH" \
+              --auth-mode login
+            
+            # Upload coverage report
+            az storage blob upload-batch \
+              --account-name $STORAGE_ACCOUNT \
+              --destination ${{ env.ARTIFACTS_CONTAINER }} \
+              --source coverage-report \
+              --destination-path "$BLOB_PATH/coverage-report" \
+              --auth-mode login
+            
+            echo "## Test Artifacts Uploaded" >> $GITHUB_STEP_SUMMARY
+            echo "Storage: $STORAGE_ACCOUNT/${{ env.ARTIFACTS_CONTAINER }}/$BLOB_PATH" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "Artifacts storage not configured yet - skipping upload"
+          fi
 
   # Job 2: Build and push Docker image
   build:
