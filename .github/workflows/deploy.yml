@@ -120,6 +120,7 @@ jobs:
 
       - name: Upload artifacts to Azure Blob Storage
         if: github.event_name == 'push'
+        continue-on-error: true
         run: |
           STORAGE_ACCOUNT=$(az keyvault secret show --vault-name ${{ env.KEY_VAULT_NAME }} --name artifacts-storage-account-name --query value -o tsv 2>/dev/null || echo "")
           if [ -n "$STORAGE_ACCOUNT" ]; then
