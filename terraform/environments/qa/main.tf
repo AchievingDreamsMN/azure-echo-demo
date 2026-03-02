@@ -42,8 +42,8 @@ module "container_app" {
   cpu          = 0.25
   memory       = "0.5Gi"
 
-  # Shorter log retention for QA
-  log_retention_days = 14
+  # Use free tier log retention for QA (only 7 or 30-730 allowed)
+  log_retention_days = 30
 
   # ACR credentials (shared from prod or provided)
   container_registry_server   = var.container_registry_server
