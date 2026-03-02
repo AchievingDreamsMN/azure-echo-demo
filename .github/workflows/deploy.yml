@@ -46,6 +46,19 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r app/requirements.txt
           pip install -r tests/requirements-test.txt
+          pip install bandit pip-audit
+
+      - name: Security scan with Bandit (Python SAST)
+        run: |
+          bandit -r app/ -f json -o bandit-results.json || true
+          bandit -r app/ -f txt || true
+        continue-on-error: true
+
+      - name: Dependency vulnerability scan with pip-audit
+        run: |
+          pip-audit -r app/requirements.txt --format json --output pip-audit-results.json || true
+          pip-audit -r app/requirements.txt || true
+        continue-on-error: true
 
       - name: Lint with Ruff
         run: ruff check app/ --output-format=json > lint-results.json || true
@@ -69,7 +82,35 @@ jobs:
             coverage.xml
             coverage-report/
             lint-results.json
+            bandit-results.json
+            pip-audit-results.json
           retention-days: 30
+
+      - name: Security scan summary
+        if: always()
+        run: |
+          echo "## Security Scan Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # Bandit results
+          if [ -f bandit-results.json ]; then
+            BANDIT_ISSUES=$(cat bandit-results.json | jq '.results | length' 2>/dev/null || echo "0")
+            if [ "$BANDIT_ISSUES" = "0" ]; then
+              echo "### Bandit (Python SAST): No issues found" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "### Bandit (Python SAST): $BANDIT_ISSUES issue(s) found" >> $GITHUB_STEP_SUMMARY
+            fi
+          fi
+          
+          # pip-audit results
+          if [ -f pip-audit-results.json ]; then
+            VULN_COUNT=$(cat pip-audit-results.json | jq '.dependencies | map(select(.vulns | length > 0)) | length' 2>/dev/null || echo "0")
+            if [ "$VULN_COUNT" = "0" ]; then
+              echo "### pip-audit (Dependencies): No vulnerabilities found" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "### pip-audit (Dependencies): $VULN_COUNT vulnerable package(s)" >> $GITHUB_STEP_SUMMARY
+            fi
+          fi
 
       - name: Log in to Azure
         if: github.event_name == 'push'
@@ -155,7 +196,48 @@ jobs:
             type=ref,event=branch
             type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
 
-      - name: Build and push Docker image
+      - name: Build Docker image for scanning
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: false
+          load: true
+          tags: ${{ env.IMAGE_NAME }}:scan
+
+      - name: Run Trivy container scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ env.IMAGE_NAME }}:scan
+          format: 'table'
+          exit-code: '0'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: 'CRITICAL,HIGH,MEDIUM'
+
+      - name: Run Trivy and save results
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ env.IMAGE_NAME }}:scan
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: 'CRITICAL,HIGH,MEDIUM'
+
+      - name: Upload Trivy scan results
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-scan-${{ github.sha }}
+          path: trivy-results.sarif
+          retention-days: 30
+
+      - name: Container scan summary
+        run: |
+          echo "## Container Scan Results" >> $GITHUB_STEP_SUMMARY
+          echo "Trivy scanned image for OS and library vulnerabilities" >> $GITHUB_STEP_SUMMARY
+          echo "See artifacts for detailed SARIF report" >> $GITHUB_STEP_SUMMARY
+
+      - name: Push Docker image
         uses: docker/build-push-action@v5
         with:
           context: .
