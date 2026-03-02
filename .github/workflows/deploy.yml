@@ -26,6 +26,30 @@ env:
   ARTIFACTS_CONTAINER: test-reports
 
 jobs:
+  # Job 0: CodeQL Security Analysis
+  codeql:
+    name: CodeQL Analysis
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: python
+          queries: security-and-quality
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:python"
+
   # Job 1: Run tests and lint
   test:
     name: Test & Lint
@@ -154,7 +178,7 @@ jobs:
   build:
     name: Build & Push Image
     runs-on: ubuntu-latest
-    needs: test
+    needs: [test, codeql]
     if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     
     outputs:
