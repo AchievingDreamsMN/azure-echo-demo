@@ -3,14 +3,47 @@ Simple Echo Web Server
 Demonstrates a basic Python web application for Azure Container Apps deployment.
 """
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import HTMLResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 import uvicorn
 import os
+import re
+import html
+from datetime import datetime
 
 ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
 PORT = int(os.getenv("PORT", "8080"))
+VERSION = os.getenv("APP_VERSION", "1.0.0")
+BUILD_SHA = os.getenv("BUILD_SHA", "local")
+BUILD_TIME = os.getenv("BUILD_TIME", "unknown")
+
+# SQL injection patterns to detect and block
+SQL_INJECTION_PATTERNS = [
+    r"(\b(SELECT|INSERT|UPDATE|DELETE|DROP|UNION|ALTER|CREATE|TRUNCATE)\b)",
+    r"(--|#|/\*|\*/)",  # SQL comments
+    r"(\bOR\b\s+\d+\s*=\s*\d+)",  # OR 1=1 patterns
+    r"(\bAND\b\s+\d+\s*=\s*\d+)",  # AND 1=1 patterns
+    r"(;\s*(SELECT|INSERT|UPDATE|DELETE|DROP))",  # Chained queries
+    r"(\bEXEC\b|\bEXECUTE\b)",  # Execute commands
+    r"(CHAR\s*\(|CONCAT\s*\()",  # String manipulation functions
+    r"(\bWAITFOR\b|\bBENCHMARK\b)",  # Time-based injection
+]
+
+
+def detect_sql_injection(text: str) -> bool:
+    """Check if text contains SQL injection patterns."""
+    for pattern in SQL_INJECTION_PATTERNS:
+        if re.search(pattern, text, re.IGNORECASE):
+            return True
+    return False
+
+
+def sanitize_input(text: str) -> str:
+    """Sanitize input to prevent injection attacks."""
+    # HTML encode to prevent XSS
+    sanitized = html.escape(text)
+    return sanitized
 
 app = FastAPI(
     title="Echo Server",
@@ -94,6 +127,15 @@ async def home():
                 font-size: 14px;
                 color: #666;
             }
+            .version {
+                margin-top: 15px;
+                padding: 10px;
+                background: #f0f0f0;
+                border-radius: 5px;
+                font-size: 12px;
+                color: #888;
+                text-align: center;
+            }
         </style>
     </head>
     <body>
@@ -113,6 +155,12 @@ async def home():
                 <strong>API Endpoints:</strong><br>
                 • POST /echo - Send JSON {"message": "your text"}<br>
                 • GET /health - Health check endpoint
+            </div>
+            
+            <div class="version">
+                <strong>Version:</strong> {VERSION} | 
+                <strong>Build:</strong> {BUILD_SHA[:7] if len(BUILD_SHA) > 7 else BUILD_SHA} | 
+                <strong>Env:</strong> {ENVIRONMENT}
             </div>
         </div>
         
@@ -143,17 +191,34 @@ async def home():
 
 @app.post("/echo", response_model=EchoResponse)
 async def echo(request: EchoRequest):
-    """Echo back the message sent by the user."""
+    """Echo back the message sent by the user with security validation."""
+    # Check for SQL injection patterns
+    if detect_sql_injection(request.message):
+        raise HTTPException(
+            status_code=400,
+            detail="Potential SQL injection detected. Request blocked."
+        )
+    
+    # Sanitize input for display (XSS protection)
+    sanitized_message = sanitize_input(request.message)
+    
     return EchoResponse(
-        echo=f"🔊 {request.message}",
-        original=request.message
+        echo=f"🔊 {sanitized_message}",  # Sanitized for safe display
+        original=request.message  # Keep actual original input
     )
 
 
 @app.get("/health")
 async def health():
     """Health check endpoint for container orchestration."""
-    return {"status": "healthy", "service": "echo-server", "environment": ENVIRONMENT}
+    return {
+        "status": "healthy",
+        "service": "echo-server",
+        "environment": ENVIRONMENT,
+        "version": VERSION,
+        "build_sha": BUILD_SHA,
+        "build_time": BUILD_TIME
+    }
 
 
 if __name__ == "__main__":

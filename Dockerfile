@@ -12,6 +12,16 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
+# Build arguments for versioning
+ARG APP_VERSION=1.0.0
+ARG BUILD_SHA=local
+ARG BUILD_TIME=unknown
+
+# Set environment variables from build args
+ENV APP_VERSION=${APP_VERSION}
+ENV BUILD_SHA=${BUILD_SHA}
+ENV BUILD_TIME=${BUILD_TIME}
+
 # Copy installed packages from builder
 COPY --from=builder /root/.local /root/.local
 
