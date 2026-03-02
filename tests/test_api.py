@@ -48,6 +48,9 @@ def test_health_endpoint(client):
     assert response.status_code == 200
     data = response.json()
     assert data["status"] == "healthy"
+    assert "version" in data
+    assert "build_sha" in data
+    assert "build_time" in data
 
 
 def test_sql_injection_blocked(client):

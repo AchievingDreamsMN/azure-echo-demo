@@ -10,9 +10,13 @@ import uvicorn
 import os
 import re
 import html
+from datetime import datetime
 
 ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
 PORT = int(os.getenv("PORT", "8080"))
+VERSION = os.getenv("APP_VERSION", "1.0.0")
+BUILD_SHA = os.getenv("BUILD_SHA", "local")
+BUILD_TIME = os.getenv("BUILD_TIME", "unknown")
 
 # SQL injection patterns to detect and block
 SQL_INJECTION_PATTERNS = [
@@ -123,6 +127,15 @@ async def home():
                 font-size: 14px;
                 color: #666;
             }
+            .version {
+                margin-top: 15px;
+                padding: 10px;
+                background: #f0f0f0;
+                border-radius: 5px;
+                font-size: 12px;
+                color: #888;
+                text-align: center;
+            }
         </style>
     </head>
     <body>
@@ -142,6 +155,12 @@ async def home():
                 <strong>API Endpoints:</strong><br>
                 • POST /echo - Send JSON {"message": "your text"}<br>
                 • GET /health - Health check endpoint
+            </div>
+            
+            <div class="version">
+                <strong>Version:</strong> {VERSION} | 
+                <strong>Build:</strong> {BUILD_SHA[:7] if len(BUILD_SHA) > 7 else BUILD_SHA} | 
+                <strong>Env:</strong> {ENVIRONMENT}
             </div>
         </div>
         
@@ -192,7 +211,14 @@ async def echo(request: EchoRequest):
 @app.get("/health")
 async def health():
     """Health check endpoint for container orchestration."""
-    return {"status": "healthy", "service": "echo-server", "environment": ENVIRONMENT}
+    return {
+        "status": "healthy",
+        "service": "echo-server",
+        "environment": ENVIRONMENT,
+        "version": VERSION,
+        "build_sha": BUILD_SHA,
+        "build_time": BUILD_TIME
+    }
 
 
 if __name__ == "__main__":
